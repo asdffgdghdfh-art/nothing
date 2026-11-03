@@ -40,8 +40,9 @@ async function saveLedger(drive, ledger) {
   await fsp.rename(temp, file);
 }
 function uploadKey(remote, hash) { return remote + '|' + hash; }
-function planUploads(index, ledger, remote) {
+function planUploads(index, ledger, remote, namespace = '') {
   if (!validRemote(remote)) throw new Error('无效的云端配置名称');
+  const ledgerRemote = namespace ? namespace + ':' + remote : remote;
   const seen = new Set();
   const pending = []; let alreadyUploaded = 0;
   for (const item of index.items || []) {
@@ -49,7 +50,7 @@ function planUploads(index, ledger, remote) {
     if (!/^[a-f0-9]{64}$/.test(item.sha256 || '')) continue;
     if (seen.has(item.sha256)) continue;
     seen.add(item.sha256);
-    if (ledger.uploads[uploadKey(remote, item.sha256)]) alreadyUploaded += 1;
+    if (ledger.uploads[uploadKey(ledgerRemote, item.sha256)]) alreadyUploaded += 1;
     else pending.push(item);
   }
   return {pending, alreadyUploaded};
@@ -154,7 +155,7 @@ function googleDriveDestination(remote, item) {
 function planGoogleDriveUploads(index, ledger, remote) {
   if (!validRemote(remote)) throw new Error('无效的云端配置名称');
   const eligible = (index.items || []).filter(isGoogleDriveMediaItem);
-  return planUploads({items:eligible}, ledger, 'google-drive_' + remote);
+  return planUploads({items:eligible}, ledger, remote, 'google-drive');
 }
 async function configuredGoogleDriveRemotes() {
   let names;
@@ -199,7 +200,7 @@ async function uploadGoogleDrive({drive,remote,onProgress=()=>{},shouldCancel=()
       // --immutable prevents replacing a different cloud object; names include the complete SHA-256.
       await copyFile(actual,destination,registerProcess,{immutable:true});
       if (shouldCancel()) { result.cancelled=true; break; }
-      ledger.uploads[uploadKey('google-drive_' + remote,item.sha256)] = {
+      ledger.uploads[uploadKey('google-drive:' + remote,item.sha256)] = {
         provider:'google-drive',remote,date:new Date().toISOString(),relativePath:rel,destination
       };
       await saveLedger(drive,ledger);
