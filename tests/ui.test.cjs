@@ -27,7 +27,8 @@ test('backup center exposes real verification, history and Google Drive backup',
    assert.match(html,new RegExp('id="'+id+'"'),'Missing '+id);
  }
  assert.match(js,/api\.verifyArchive\(/);
- assert.match(js,/api\.openGoogleDrive\(/);\n assert.match(js,/api\.uploadGoogleDrive\(/);
+ assert.match(js,/api\.openGoogleDrive\(/);
+ assert.match(js,/api\.uploadGoogleDrive\(/);
  assert.match(js,/state\.history/);
 });
 test('no server dependency or remote scripts in portable shell', () => {
