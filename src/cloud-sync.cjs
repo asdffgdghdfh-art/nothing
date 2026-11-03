@@ -98,6 +98,10 @@ async function uploadGooglePhotos({drive,remote,onProgress=()=>{},shouldCancel=(
   const configured = await getConfiguredRemotes();
   if (!configured.includes(remote)) throw new Error('所选 rclone 连接不是 Google Photos，请重新配置');
   drive = path.resolve(drive);
+  // realpath both sides before containment checks: macOS /var may resolve to /private/var,
+  // and Windows may normalize paths differently. This keeps valid removable/temp paths working
+  // while still rejecting symlinks that escape the selected backup drive.
+  const driveReal = await fsp.realpath(drive);
   const {index} = await core.prepareCatalog(drive);
   await core.saveIndex(drive,index);
   const ledger = await readLedger(drive);
@@ -109,7 +113,7 @@ async function uploadGooglePhotos({drive,remote,onProgress=()=>{},shouldCancel=(
     try {
       const source = path.join(drive,item.relativePath);
       const actual = await fsp.realpath(source);
-      if (!core.isWithin(drive,actual)) throw new Error('文件不在备份硬盘内');
+      if (!core.isWithin(driveReal,actual)) throw new Error('文件不在备份硬盘内');
       if ((await core.hashFile(actual)) !== item.sha256) throw new Error('文件内容变化，请刷新后再试');
       const destination = remote + ':upload/' + remoteUploadName(item);
       await copyFile(actual,destination,registerProcess);
