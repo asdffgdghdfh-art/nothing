@@ -22,6 +22,8 @@ test('archive verification detects corruption even if size and mtime do not chan
   const oldIndex=await readIndex(drive);
   assert.match(oldIndex.items[0].source,/手机/);
   const stored=path.join(drive,oldIndex.items[0].relativePath);
+  const debugCore=require('../src/core.cjs');
+  console.log('DEBUG_VERIFY',process.platform,JSON.stringify(oldIndex.items),debugCore.safeRelative(oldIndex.items[0].relativePath),stored,await fs.stat(stored).then(x=>x.size));
   const oldStat=await fs.stat(stored);
   await fs.writeFile(stored,'CHANGED!-123'); // exactly same length
   await fs.utimes(stored,oldStat.atime,oldStat.mtime);
