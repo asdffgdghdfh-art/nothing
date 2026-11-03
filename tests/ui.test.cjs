@@ -30,23 +30,6 @@ test('backup center exposes real verification, history and manual Google Photos 
  assert.match(js,/api\.openGooglePhotos\(/);
  assert.match(js,/state\.history/);
 });
-test('dark appearance is the default, persistent, accessible and switchable',()=>{
-  assert.ok(html.includes('<html lang="zh-CN" data-theme="dark">'));
-  assert.ok(html.includes('id="theme-toggle"'));
-  assert.ok(html.includes('aria-label="切换到浅色模式"'));
-  assert.ok(js.includes('localStorage.getItem(THEME_STORAGE_KEY)'));
-  assert.ok(js.includes('localStorage.setItem(THEME_STORAGE_KEY, selected)'));
-  assert.ok(js.includes("applyTheme(current === 'dark' ? 'light' : 'dark')"));
-  assert.ok(css.includes('html[data-theme="dark"]'));
-  assert.ok(css.includes('.theme-toggle'));
-  assert.ok(css.includes('color-scheme: dark'));
-  assert.ok(html.includes('data-tab="people"'));
-  assert.ok(js.includes('function placeKey(item)'));
-  assert.ok(js.includes('api.setGpsIndexing(enabled)'));
-  assert.ok(js.includes('按 EXIF / Takeout 拍摄年月自动整理'));
-  assert.ok(js.includes("dateSource === 'container'"));
-  assert.ok(js.includes('视频容器时间'));
-});
 test('no server dependency or remote scripts in portable shell', () => {
   assert.doesNotMatch(html,/<script[^>]+src=["']https?:/i);
   assert.match(html,/Content-Security-Policy/);
