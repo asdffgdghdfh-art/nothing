@@ -22,12 +22,12 @@ test('viewer and timeline are connected to actual local media', () => {
   assert.match(css,/\.viewer-stage/);
   assert.match(css,/\.timeline-group/);
 });
-test('backup center exposes real verification, history and manual Google Photos fallback',()=> {
- for(const id of ['sync-view','sync-pick','sync-import','sync-open-google','sync-open-library','sync-verify','sync-history','sync-verify-message']) {
+test('backup center exposes real verification, history and Google Drive backup',()=> {
+ for(const id of ['sync-view','sync-pick','sync-import','sync-open-gdrive','sync-open-library','sync-verify','sync-history','sync-verify-message']) {
    assert.match(html,new RegExp('id="'+id+'"'),'Missing '+id);
  }
  assert.match(js,/api\.verifyArchive\(/);
- assert.match(js,/api\.openGooglePhotos\(/);
+ assert.match(js,/api\.openGoogleDrive\(/);\n assert.match(js,/api\.uploadGoogleDrive\(/);
  assert.match(js,/state\.history/);
 });
 test('no server dependency or remote scripts in portable shell', () => {
