@@ -154,7 +154,7 @@ function googleDriveDestination(remote, item) {
 function planGoogleDriveUploads(index, ledger, remote) {
   if (!validRemote(remote)) throw new Error('无效的云端配置名称');
   const eligible = (index.items || []).filter(isGoogleDriveMediaItem);
-  return planUploads({items:eligible}, ledger, 'google-drive:' + remote);
+  return planUploads({items:eligible}, ledger, 'google-drive_' + remote);
 }
 async function configuredGoogleDriveRemotes() {
   let names;
@@ -199,7 +199,7 @@ async function uploadGoogleDrive({drive,remote,onProgress=()=>{},shouldCancel=()
       // --immutable prevents replacing a different cloud object; names include the complete SHA-256.
       await copyFile(actual,destination,registerProcess,{immutable:true});
       if (shouldCancel()) { result.cancelled=true; break; }
-      ledger.uploads[uploadKey('google-drive:' + remote,item.sha256)] = {
+      ledger.uploads[uploadKey('google-drive_' + remote,item.sha256)] = {
         provider:'google-drive',remote,date:new Date().toISOString(),relativePath:rel,destination
       };
       await saveLedger(drive,ledger);
