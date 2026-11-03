@@ -2,11 +2,11 @@
   "name": "smartbackup",
   "version": "0.4.0",
   "private": true,
-  "description": "Offline-first photo backup and private photo organizer with EXIF dates, optional local GPS grouping and verified removable-drive backups",
+  "description": "Offline-first photo library, verified removable-drive backup, optional Google Drive backup",
   "main": "src/main.cjs",
   "scripts": {
     "start": "electron .",
-    "test": "node --check src/components.js && node --check src/renderer.js && node --check src/main.cjs && node --check src/core.cjs && node --check src/metadata.cjs && node --check src/history.cjs && node --check src/cloud-sync.cjs && node --test tests/*.test.cjs",
+    "test": "node --check src/components.js && node --check src/renderer.js && node --check src/main.cjs && node --check src/core.cjs && node --check src/history.cjs && node --check src/cloud-sync.cjs && node --test tests/*.test.cjs",
     "pack:win": "electron-builder --win portable --publish never",
     "pack:mac": "electron-builder --mac zip --arm64 --publish never"
   },
@@ -38,8 +38,5 @@
       "category": "public.app-category.photography",
       "artifactName": "SmartBackup-${version}-macOS-${arch}.${ext}"
     }
-  },
-  "dependencies": {
-    "exifr": "^7.1.3"
   }
 }
