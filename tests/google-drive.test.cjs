@@ -15,11 +15,7 @@ test('Google Drive upload is incremental, preserves folder layout and never dele
   const original=path.join(source,'IMG_001.jpg');
   await fs.writeFile(original,'PHOTO-ORIGINAL-BYTES');
   const imported=await backup({source,drive});
-  assert.equal(imported.copied,1);
-  const debugCore=require('../src/core.cjs');
-  const debugCatalog=await debugCore.prepareCatalog(drive);
-  console.log('DEBUG_GDRIVE',process.platform,JSON.stringify(debugCatalog.index.items),debugCatalog.index.items.map(x=>({safe:debugCore.safeRelative(x.relativePath),pathOk:require('../src/cloud-sync.cjs').isGoogleDriveMediaItem(x),sha:!!x.sha256})));
-  const uploads=[];
+  assert.equal(imported.copied,1);  const uploads=[];
   const args={
    drive,remote:'gdrive',
    getConfiguredRemotes:async()=>['gdrive'],
