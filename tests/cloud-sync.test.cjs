@@ -49,11 +49,7 @@ test('disk-to-cloud upload only flags successful bytes and is incremental withou
   await fs.writeFile(photo,'PHOTO-ORIGINAL');
   const {backup}=require('../src/core.cjs');
   const imported=await backup({source,drive});
-  assert.equal(imported.copied,1);
-  const debugCore=require('../src/core.cjs');
-  const debugCatalog=await debugCore.prepareCatalog(drive);
-  console.log('DEBUG_GPHOTOS',process.platform,JSON.stringify(debugCatalog.index.items),debugCatalog.index.items.map(x=>({safe:debugCore.safeRelative(x.relativePath),slash:x.relativePath.startsWith('Photos/')||x.relativePath.startsWith('Videos/'),sha:!!x.sha256})));
-  let uploadedPaths=[];
+  assert.equal(imported.copied,1);  let uploadedPaths=[];
   const args={
    drive,remote:'gphotos',
    getConfiguredRemotes:async()=>['gphotos'],
