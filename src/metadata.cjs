@@ -146,8 +146,7 @@ async function extractMetadata(filename, options = {}) {
   if (kind === 'Photos') {
     try {
       exif = await exifr.parse(filename, {
-        // Explicitly disable the GPS IFD unless the user opted in.
-        tiff: false,
+        // Parse ordinary TIFF/EXIF metadata; the GPS IFD remains opt-in.
         ifd0: true,
         exif: true,
         gps: includeGps,
