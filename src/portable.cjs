@@ -53,7 +53,7 @@ function launchVolumeRoot(options = {}) {
   const execPath = options.execPath || process.execPath;
   const portableDir = options.portableDir || process.env.PORTABLE_EXECUTABLE_DIR || '';
   const home = options.home || os.homedir();
-  const candidate = platform === 'win32' ? path.win32.resolve(portableDir || execPath) : path.resolve(portableDir || execPath);
+  const candidate = platform === 'win32' ? path.win32.resolve(portableDir || execPath) : path.posix.resolve(portableDir || execPath);
   if (platform === 'win32') {
     const root = path.win32.parse(candidate).root;
     const homeRoot = path.win32.parse(home).root;
