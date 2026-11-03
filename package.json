@@ -6,7 +6,7 @@
   "main": "src/main.cjs",
   "scripts": {
     "start": "electron .",
-    "test": "node --check src/components.js && node --check src/renderer.js && node --check src/main.cjs && node --check src/core.cjs && node --check src/history.cjs && node --check src/cloud-sync.cjs && node --test tests/*.test.cjs",
+    "test": "node --check src/components.js && node --check src/preload.cjs && node --check src/renderer.js && node --check src/main.cjs && node --check src/core.cjs && node --check src/history.cjs && node --check src/cloud-sync.cjs && node --test tests/*.test.cjs",
     "pack:win": "electron-builder --win portable --publish never",
     "pack:mac": "electron-builder --mac zip --arm64 --publish never"
   },
