@@ -36,6 +36,7 @@ applyTheme(initialTheme(), false);
 
 const state = {
   drive: null,
+  device: null,
   source: null,
   items: [],
   storage: null,
@@ -130,7 +131,7 @@ function renderMetrics() {
       icon: connected ? 'shield-check' : 'hard-drive',
       label: '备份状态',
       value: connected ? '备份就绪' : '等待连接',
-      detail: connected ? '外置存储设备已连接' : '连接移动硬盘开始使用',
+      detail: connected ? (state.device ? '已识别移动硬盘身份 · 配置随盘携带' : '外置存储设备已连接') : '插入已登记的移动硬盘即可自动匹配',
       tone: connected ? 'success' : ''
     },
     {
@@ -172,14 +173,14 @@ function renderStorage() {
   const percent = total > 0 ? Math.min(100, used / total * 100) : 0;
 
   $('drive-label').textContent = driveName(state.drive);
-  $('drive-state').textContent = connected ? basename(state.drive) + ' · 已连接' : '等待连接 · 选择备份目标';
+  $('drive-state').textContent = connected ? basename(state.drive) + (state.device ? ' · 自动识别' : ' · 已连接') : '等待连接 · 插入移动硬盘自动识别';
   $('storage-used').textContent = total ? formatSize(used) + ' / ' + formatSize(total) : '— / —';
   $('storage-percent').textContent = total ? percent.toFixed(1) + '%' : '—';
   $('storage-free').textContent = total ? '可用 ' + formatSize(free) : '可用空间 —';
   $('storage-bar').style.width = percent + '%';
   $('storage-live-dot').classList.toggle('is-connected', connected);
   $('connection-dot').classList.toggle('is-connected', connected);
-  $('connection-label').textContent = connected ? '本地硬盘已连接' : '未连接硬盘';
+  $('connection-label').textContent = connected ? (state.device ? '跨设备资料库已匹配' : '本地硬盘已连接') : '等待移动硬盘';
   $('connect-drive-top').replaceChildren(UI.icon('hard-drive', 16), document.createTextNode(connected ? ' 更换硬盘' : ' 选择硬盘'));
   $('backup-action').disabled = state.busy;
   $('choose-drive').disabled = state.busy;
@@ -621,11 +622,13 @@ async function chooseDrive() {
     const result = await api.chooseDrive();
     if (!result) return;
     state.drive = result.drive;
+    state.device = result.device || null;
     state.source = result.source;
     state.storage = result.storage;
     state.items = result.items || [];
     state.history = result.history || [];
-    state.settings = result.settings || { version: 1, includeGps: false };
+    state.settings = result.settings || { version: 1, includeGps: false, theme: 'dark' };
+    if (state.settings.theme) applyTheme(state.settings.theme, false);
     state.group = null;
     state.expandedPhotos = false;
     state.expandedVideos = false;
@@ -658,7 +661,9 @@ async function refresh() {
     state.items = result.items || [];
     state.storage = result.storage;
     state.history = result.history || [];
+    state.device = result.device || state.device;
     state.settings = result.settings || state.settings;
+    if (state.settings.theme) applyTheme(state.settings.theme, false);
     render();
     toast('相册已更新');
   } catch (error) {
@@ -689,6 +694,7 @@ async function runBackup() {
     $('progress-message').textContent = message;
     $('progress-state').textContent = result.cancelled ? '已取消' : state.failed ? '部分完成' : '备份完成';
     const view = await api.refresh();
+    state.device = view.device || state.device;
     state.items = view.items || [];
     state.storage = view.storage;
     state.history = view.history || [];
@@ -819,7 +825,9 @@ $('sync-upload').addEventListener('click', runGooglePhotosUpload);
 $('sync-cancel-cloud').addEventListener('click', () => api.cancelGooglePhotos().then(() => toast('已请求取消云端上传')));
 $('theme-toggle').addEventListener('click', () => {
   const current = document.documentElement.dataset.theme;
-  applyTheme(current === 'dark' ? 'light' : 'dark');
+  const next = current === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  if (state.drive) api.setTheme(next).catch(error => toast('主题已切换，但未能写入移动硬盘：' + error.message));
 });
 $('connect-drive-top').addEventListener('click', chooseDrive);
 $('choose-drive').addEventListener('click', chooseDrive);
@@ -859,3 +867,28 @@ document.addEventListener('keydown', event => {
 });
 
 render();
+
+async function restorePortableDrive(){
+  try{
+    const result=await api.getStartupState();
+    if(!result)return;
+    state.drive=result.drive;state.device=result.device||null;state.source=result.source;
+    state.items=result.items||[];state.storage=result.storage;state.history=result.history||[];
+    state.settings=result.settings||state.settings;
+    if(state.settings.theme)applyTheme(state.settings.theme,false);
+    render();
+    toast('已自动识别移动硬盘，原有照片库已匹配');
+  }catch(error){toast('自动识别移动硬盘失败：'+error.message);}
+}
+api.onDriveStatus(result=>{
+  if(!result){
+    state.drive=null;state.device=null;state.items=[];state.storage=null;state.history=[];
+    render();toast('移动硬盘已断开连接');
+    return;
+  }
+  state.drive=result.drive;state.device=result.device||null;state.items=result.items||[];
+  state.storage=result.storage;state.history=result.history||[];state.settings=result.settings||state.settings;
+  if(state.settings.theme)applyTheme(state.settings.theme,false);
+  render();toast('已自动识别移动硬盘，照片库已就绪');
+});
+restorePortableDrive();

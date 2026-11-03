@@ -1,5 +1,5 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs/promises');const os=require('node:os');const path=require('node:path');
-const {backup,gallery,hashFile,isWithin,toggleFavorite}=require('../src/core.cjs');
+const {backup,gallery,hashFile,isWithin,toggleFavorite,readSettings,setTheme}=require('../src/core.cjs');
 test('incremental backup, exact duplicate under new name, collision, favorites, untouched originals',async()=>{
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'smartbackup-test-'));
  try{
@@ -19,4 +19,17 @@ test('incremental backup, exact duplicate under new name, collision, favorites, 
 test('reject nested source and drive',async()=>{
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'smartbackup-nest-'));
  try{await assert.rejects(()=>backup({source:root,drive:path.join(root,'a')}),/互相包含/);}finally{await fs.rm(root,{recursive:true,force:true});}
+});
+
+test('portable theme preference is stored on the drive and survives GPS setting updates',async()=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'smartbackup-settings-'));
+ try{
+  assert.equal((await readSettings(root)).theme,'dark');
+  await setTheme(root,'light');
+  assert.equal((await readSettings(root)).theme,'light');
+  const {setGpsIndexing}=require('../src/core.cjs');
+  await setGpsIndexing(root,true);
+  assert.equal((await readSettings(root)).theme,'light');
+  assert.equal((await readSettings(root)).includeGps,true);
+ }finally{await fs.rm(root,{recursive:true,force:true});}
 });

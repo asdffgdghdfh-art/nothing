@@ -1,6 +1,9 @@
 'use strict';
 const {contextBridge,ipcRenderer}=require('electron');
 contextBridge.exposeInMainWorld('smartbackup',{
+ getStartupState:()=>ipcRenderer.invoke('get-startup-state'),
+ setTheme:theme=>ipcRenderer.invoke('set-theme',theme),
+ onDriveStatus:fn=>{const listener=(_event,data)=>fn(data);ipcRenderer.on('drive-status',listener);return ()=>ipcRenderer.removeListener('drive-status',listener);},
  chooseDrive:()=>ipcRenderer.invoke('choose-drive'),
  chooseSource:origin=>ipcRenderer.invoke('choose-source',origin),
  refresh:()=>ipcRenderer.invoke('refresh'),

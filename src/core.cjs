@@ -40,19 +40,21 @@ function settingsFile(drive) { return path.join(drive,'.smartbackup','settings.j
 async function readSettings(drive) {
   try {
     const value = JSON.parse(await fsp.readFile(settingsFile(drive), 'utf8'));
-    return { version: 1, includeGps: value.version === 1 && value.includeGps === true };
-  } catch { return { version: 1, includeGps: false }; }
+    return { version: 1, includeGps: value.version === 1 && value.includeGps === true, theme: value.theme === 'light' ? 'light' : 'dark' };
+  } catch { return { version: 1, includeGps: false, theme: 'dark' }; }
 }
 async function saveSettings(drive, settings) {
+  const current = await readSettings(drive);
+  settings = { ...current, ...settings };
   const file = settingsFile(drive);
   await fsp.mkdir(path.dirname(file), { recursive: true });
   const temp = file + '.tmp';
-  await fsp.writeFile(temp, JSON.stringify({ version: 1, includeGps: settings.includeGps === true }), 'utf8');
+  await fsp.writeFile(temp, JSON.stringify({ version: 1, includeGps: settings.includeGps === true, theme: settings.theme === 'light' ? 'light' : 'dark' }), 'utf8');
   try { await fsp.copyFile(file, file + '.bak'); } catch { /* first save */ }
   await fsp.rename(temp, file);
 }
 async function setGpsIndexing(drive, enabled) {
-  const settings = { version: 1, includeGps: enabled === true };
+  const settings = { ...(await readSettings(drive)), version: 1, includeGps: enabled === true };
   await saveSettings(drive, settings);
   if (!settings.includeGps) {
     const index = await readIndex(drive);
@@ -61,6 +63,11 @@ async function setGpsIndexing(drive, enabled) {
     const { index } = await prepareCatalog(drive);
     await saveIndex(drive, index);
   }
+  return settings;
+}
+async function setTheme(drive, theme) {
+  const settings = { ...(await readSettings(drive)), theme: theme === 'light' ? 'light' : 'dark' };
+  await saveSettings(drive, settings);
   return settings;
 }
 function blankIndex() { return {version:1,items:[],missing:[],integrityAlerts:[],favorites:[],updatedAt:null}; }
@@ -330,4 +337,4 @@ async function toggleFavorite(drive,relativePath) {
   if(s.has(relativePath))s.delete(relativePath);else s.add(relativePath);
   index.favorites=[...s];await saveIndex(drive,index);return s.has(relativePath);
 }
-module.exports={kindOf,isWithin,listMedia,hashFile,readIndex,saveIndex,readSettings,saveSettings,setGpsIndexing,prepareCatalog,backup,gallery,verifyArchive,toggleFavorite,safeRelative};
+module.exports={kindOf,isWithin,listMedia,hashFile,readIndex,saveIndex,readSettings,saveSettings,setGpsIndexing,setTheme,prepareCatalog,backup,gallery,verifyArchive,toggleFavorite,safeRelative};
