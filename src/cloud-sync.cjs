@@ -101,7 +101,7 @@ async function uploadGooglePhotos({drive,remote,onProgress=()=>{},shouldCancel=(
   if (!validRemote(remote)) throw new Error('请选择有效的 Google Photos 连接');
   const configured = await getConfiguredRemotes();
   if (!configured.includes(remote)) throw new Error('所选 rclone 连接不是 Google Photos，请重新配置');
-  drive = path.resolve(drive);
+  drive = await fsp.realpath(path.resolve(drive));
   const {index} = await core.prepareCatalog(drive);
   await core.saveIndex(drive,index);
   const ledger = await readLedger(drive);
@@ -181,7 +181,7 @@ async function uploadGoogleDrive({drive,remote,onProgress=()=>{},shouldCancel=()
   if (!validRemote(remote)) throw new Error('请选择有效的 Google Drive 连接');
   const configured = await getConfiguredRemotes();
   if (!configured.includes(remote)) throw new Error('所选 rclone 连接不是 Google Drive（drive 类型），请重新配置');
-  drive = path.resolve(drive);
+  drive = await fsp.realpath(path.resolve(drive));
   const {index} = await core.prepareCatalog(drive);
   await core.saveIndex(drive,index);
   const ledger = await readLedger(drive);
