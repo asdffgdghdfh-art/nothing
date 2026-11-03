@@ -53,6 +53,7 @@ async function saveIndex(drive,index) {
 }
 function safeRelative(rel) {return typeof rel==='string' && rel.length>0 && !path.isAbsolute(rel) && !rel.split(/[\\/]+/).includes('..') && !rel.startsWith('.smartbackup');}
 async function prepareCatalog(drive,onProgress=()=>{}) {
+  drive=await fsp.realpath(path.resolve(drive));
   const index=await readIndex(drive);
   const map=new Map(index.items.filter(x=>safeRelative(x.relativePath)).map(x=>[x.relativePath,x]));
   const files=[];
@@ -115,6 +116,8 @@ async function backup({source,drive,sourceLabel=null,onProgress=()=>{},shouldCan
   if(!s.isDirectory()||!d.isDirectory()) throw Error('请选择有效的来源文件夹和目标硬盘');
   const realSource=await fsp.realpath(source), realDrive=await fsp.realpath(drive);
   if(isWithin(realSource,realDrive)||isWithin(realDrive,realSource))throw Error('来源文件夹和备份硬盘不能互相包含');
+  // Work with canonical paths after resolving symlinks (notably macOS /var -> /private/var).
+  source=realSource;drive=realDrive;
   const {index,hashes}=await prepareCatalog(drive,onProgress);
   const verifiedHashes=new Map();
   const incoming=[];
@@ -166,7 +169,7 @@ async function gallery(drive) {
   return index.items.slice().reverse().map(x=>({relativePath:x.relativePath,kind:x.kind,size:x.size,mtimeMs:x.mtimeMs,source:x.source||'导入文件',favorite:index.favorites.includes(x.relativePath)}));
 }
 async function verifyArchive(drive,{onProgress=()=>{},shouldCancel=()=>false}={}) {
-  drive=path.resolve(drive);
+  drive=await fsp.realpath(path.resolve(drive));
   if(!(await fsp.stat(drive)).isDirectory())throw Error('硬盘目录无效');
   // Audit the persisted inventory, including prior missing files; never mutate it.
   const index=await readIndex(drive);
