@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="zh-CN" data-theme="dark">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' smartbackup-media: data:; media-src 'self' smartbackup-media:; style-src 'self'; script-src 'self'; connect-src 'self';">
-  <meta name="theme-color" content="#111720">
+  <meta name="theme-color" content="#ffffff">
   <title>SmartBackup · 我的照片</title>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -23,7 +23,6 @@
       <button class="nav-item" data-tab="albums"><span class="nav-icon" data-icon="layers"></span><span class="nav-label">相册</span></button>
       <button class="nav-item" data-tab="favorites"><span class="nav-icon" data-icon="star"></span><span class="nav-label">收藏夹</span></button>
       <button class="nav-item" data-tab="places"><span class="nav-icon" data-icon="map-pin"></span><span class="nav-label">地点</span></button>
-      <button class="nav-item" data-tab="people"><span class="nav-icon" data-icon="users"></span><span class="nav-label">人物</span></button>
       <button class="nav-item" data-tab="sources"><span class="nav-icon" data-icon="folder-down"></span><span class="nav-label">来源设备</span></button>
       <button class="nav-item" data-tab="sync"><span class="nav-icon" data-icon="shield-check"></span><span class="nav-label">备份中心</span></button>
     </nav>
@@ -46,7 +45,6 @@
       <div class="top-actions">
         <div class="connection-pill"><span class="connection-dot" id="connection-dot"></span><span id="connection-label">未连接硬盘</span></div>
         <button class="icon-button" id="refresh" title="刷新资料库" aria-label="刷新资料库"><span data-icon="refresh-cw"></span></button>
-        <button class="icon-button theme-toggle" id="theme-toggle" type="button" title="切换到浅色模式" aria-label="切换到浅色模式" aria-pressed="true"><span data-icon="sun"></span></button>
         <button class="backup-button" id="backup-action"><span data-icon="hard-drive"></span><span>导入硬盘</span></button>
         <div class="profile-avatar" title="仅本地，无需账号">S</div>
       </div>
@@ -67,7 +65,7 @@
       <section class="media-section video-section" id="video-section"><div class="section-head" id="video-heading"></div><div class="media-grid video-grid" id="video-grid" aria-live="polite"></div><div class="section-more-row"><button class="section-more" id="view-all-videos" hidden>查看全部视频</button></div></section>
       <section class="collection-view" id="collection-view" hidden><div class="section-head" id="collection-heading"></div><div class="collection-grid" id="collection-grid" aria-live="polite"></div></section>
       <section class="sync-view" id="sync-view" hidden aria-label="多来源同步中心">
-        <div class="sync-heading"><h2>两份备份，一个简单流程</h2><p>① 手机照片先通过电脑导出到普通文件夹 → ② SmartBackup 原画备份到移动硬盘 → ③ 在电脑上上传 Google Photos。百度网盘只是可选中转渠道。</p></div>
+        <div class="sync-heading"><h2>两份备份，一个简单流程</h2><p>① 手机照片先通过电脑导出到普通文件夹 → ② SmartBackup 原画备份到移动硬盘 → ③ 在电脑上上传 Google Drive。百度网盘只是可选中转渠道。</p></div>
         <div class="sync-grid">
           <article class="sync-card">
             <div class="sync-card-glyph" data-icon="folder-down"></div>
@@ -90,18 +88,18 @@
           </article>
           <article class="sync-card">
             <div class="sync-card-glyph" data-icon="cloud-upload"></div>
-            <h3>第二步：备份到 Google Photos</h3>
-            <p>最简单的方法是打开 Google Photos 网页，从移动硬盘选择文件上传。也可以选择高级的 rclone 上传（需要单独授权和配置）。</p>
-            <label class="sync-field">Google Photos 连接
-              <select id="sync-gphotos-remote"><option value="">先检测 rclone 配置</option></select>
+            <h3>第二步：备份到 Google Drive</h3>
+            <p>将移动硬盘中的照片和视频增量复制到 Google Drive。首次使用需要在电脑安装 rclone，并完成 Google Drive OAuth 授权。</p>
+            <label class="sync-field">Google Drive 连接
+              <select id="sync-gdrive-remote"><option value="">先检测 rclone 配置</option></select>
             </label>
-            <div class="sync-card-actions"><button id="sync-open-google" class="quiet-action">打开 Google Photos 网页</button><button id="sync-open-library" class="quiet-action">打开硬盘照片/视频目录</button></div>
+            <div class="sync-card-actions"><button id="sync-open-gdrive" class="quiet-action">打开 Google Drive 网页</button><button id="sync-open-library" class="quiet-action">打开硬盘照片/视频目录</button></div>
             <div class="sync-card-actions">
-              <button id="sync-refresh-gphotos" class="quiet-action">检测连接</button>
-              <button id="sync-upload" class="backup-button" disabled>上传未归档照片</button>
+              <button id="sync-refresh-gdrive" class="quiet-action">检测 Google Drive 连接</button>
+              <button id="sync-upload" class="backup-button" disabled>备份新增照片和视频</button>
               <button id="sync-cancel-cloud" class="quiet-action" hidden>取消上传</button>
             </div>
-            <div class="sync-selected" id="sync-cloud-progress" role="status" aria-live="polite">高级上传需安装 rclone 并配置自己的 Google Photos OAuth；网页上传不依赖 rclone。</div>
+            <div class="sync-selected" id="sync-cloud-progress" role="status" aria-live="polite">需要在电脑安装 rclone 并配置 Google Drive（drive 类型）连接。文件会复制到云端 SmartBackup 文件夹；不会删除硬盘原件。</div>
           </article>
         </div>
         <section class="backup-health" aria-label="备份记录和完整性核验">
@@ -111,7 +109,7 @@
           <p id="sync-verify-message" class="sync-selected" role="status" aria-live="polite">尚未进行完整性检查。首次检查较慢，大量照片需要读取整块硬盘。</p>
           <div id="sync-history" class="sync-history" aria-live="polite"></div>
         </section>
-        <div class="sync-warning"><strong>同步限制：</strong>Google Photos 目前不允许第三方应用自动读取完整旧图库。云端照片导回硬盘请使用 Google Takeout；百度网盘 API 直连和手机端上传仍在开发。本版本绝不会在任何来源或目标自动删除照片。</div>
+        <div class="sync-warning"><strong>同步限制：</strong>Google Drive 备份是单向复制：硬盘中的 Photos/ 与 Videos/ 会增量上传到云端 SmartBackup 文件夹，不会反向删除或覆盖不同内容。手机照片仍通过电脑中转目录导入；百度网盘 API 直连尚未实现。本版本不会自动删除任何来源或目标照片。</div>
       </section>
       <footer class="app-footer"><span class="footer-mark" data-icon="shield-check"></span><span>照片属于你 · 本地保存原件 · SHA-256 校验去重</span></footer>
     </div>
