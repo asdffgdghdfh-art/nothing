@@ -65,7 +65,7 @@ function launchVolumeRoot(options = {}) {
     return match ? match[1] : null;
   }
   const normalized = candidate.replace(/\\/g, '/');
-  const match = normalized.match(/^(\/(?:media\/[^/]+|run\/media\/[^/]+|mnt\/[^/]+))(?:\/|$)/);
+  const match = normalized.match(/^(\/(?:media\/[^/]+\/[^/]+|run\/media\/[^/]+\/[^/]+|mnt\/[^/]+))(?:\/|$)/);
   return match ? match[1] : null;
 }
 async function mountedRoots(platform = process.platform, env = process.env) {

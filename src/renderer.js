@@ -825,8 +825,8 @@ $('sync-upload').addEventListener('click', runGooglePhotosUpload);
 $('sync-cancel-cloud').addEventListener('click', () => api.cancelGooglePhotos().then(() => toast('已请求取消云端上传')));
 $('theme-toggle').addEventListener('click', () => {
   const current = document.documentElement.dataset.theme;
-  const next = current === 'dark' ? 'light' : 'dark';
-  applyTheme(next);
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+  const next = document.documentElement.dataset.theme;
   if (state.drive) api.setTheme(next).catch(error => toast('主题已切换，但未能写入移动硬盘：' + error.message));
 });
 $('connect-drive-top').addEventListener('click', chooseDrive);
