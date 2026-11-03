@@ -1,0 +1,94 @@
+name: SmartBackup desktop builds
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smartbackup-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Linux tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run automated tests
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee npm-test.log
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SmartBackup-Linux-test-log
+          path: npm-test.log
+          if-no-files-found: warn
+          retention-days: 7
+
+  windows:
+    name: Windows x64 portable build
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run automated tests
+        run: npm test
+      - name: Build portable EXE
+        run: npm run pack:win
+      - name: Upload Windows build
+        uses: actions/upload-artifact@v4
+        with:
+          name: SmartBackup-Windows-x64
+          path: dist/*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  macos:
+    name: macOS Apple Silicon ARM64 build
+    runs-on: macos-15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Confirm runner architecture
+        run: |
+          test "$(uname -m)" = "arm64"
+          node -p "process.arch"
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run automated tests
+        run: npm test
+      - name: Build macOS ARM64 ZIP
+        run: npm run pack:mac
+      - name: Upload macOS build
+        uses: actions/upload-artifact@v4
+        with:
+          name: SmartBackup-macOS-ARM64
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 14
