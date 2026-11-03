@@ -43,6 +43,7 @@ jobs:
 
   windows:
     name: Windows x64 portable build
+    needs: test
     runs-on: windows-latest
     steps:
       - name: Check out source
@@ -67,6 +68,7 @@ jobs:
 
   macos:
     name: macOS Apple Silicon ARM64 build
+    needs: test
     runs-on: macos-15
     steps:
       - name: Check out source
