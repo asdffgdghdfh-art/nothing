@@ -2,37 +2,6 @@
 const api = window.smartbackup;
 const UI = window.SBComponents;
 const $ = id => document.getElementById(id);
-const THEME_STORAGE_KEY = 'smartbackup-theme';
-
-function applyTheme(theme, persist = true) {
-  const selected = theme === 'light' ? 'light' : 'dark';
-  document.documentElement.dataset.theme = selected;
-  document.documentElement.style.colorScheme = selected;
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', selected === 'dark' ? '#111720' : '#ffffff');
-  const button = $('theme-toggle');
-  if (button) {
-    const label = selected === 'dark' ? '切换到浅色模式' : '切换到深色模式';
-    button.replaceChildren(UI.icon(selected === 'dark' ? 'sun' : 'moon', 18));
-    button.title = label;
-    button.setAttribute('aria-label', label);
-    button.setAttribute('aria-pressed', String(selected === 'dark'));
-  }
-  if (persist) {
-    try { localStorage.setItem(THEME_STORAGE_KEY, selected); } catch (_) { /* theme still works for this session */ }
-  }
-}
-
-function initialTheme() {
-  try {
-    const saved = localStorage.getItem(THEME_STORAGE_KEY);
-    return saved === 'light' || saved === 'dark' ? saved : 'dark';
-  } catch (_) {
-    return 'dark';
-  }
-}
-
-applyTheme(initialTheme(), false);
 
 const state = {
   drive: null,
@@ -54,10 +23,9 @@ const state = {
   cloudBusy: false,
   cloudRemotes: [],
   history: [],
-  settings: { version: 1, includeGps: false },
   verifyBusy: false,
   verifyMessage: '尚未进行完整性检查。首次检查较慢，大量照片需要读取整块硬盘。',
-  cloudMessage: '需要先在电脑安装 rclone 并配置 Google Photos OAuth 授权。'
+  cloudMessage: '需要先在电脑安装 rclone 并配置 Google Drive OAuth 授权。'
 };
 
 function formatSize(value) {
@@ -87,15 +55,8 @@ function driveName(path) {
   return (/elements/i.test(path) || /^[a-z]:$/i.test(name)) ? 'WD Elements 外置硬盘' : name;
 }
 
-function mediaDate(item) {
-  const metadataDate = item && item.metadata && item.metadata.dateTaken;
-  const preferred = metadataDate ? new Date(metadataDate) : null;
-  if (preferred && Number.isFinite(preferred.getTime())) return preferred;
-  const fallback = new Date(item && item.mtimeMs);
-  return Number.isFinite(fallback.getTime()) ? fallback : new Date(0);
-}
 function monthOf(item) {
-  const date = mediaDate(item);
+  const date = new Date(item.mtimeMs);
   if (!Number.isFinite(date.getTime())) return '未知日期';
   return date.getFullYear() + '年' + String(date.getMonth() + 1).padStart(2, '0') + '月';
 }
@@ -106,11 +67,7 @@ function visibleItems() {
     const query = state.filter.toLocaleLowerCase();
     items = items.filter(item => {
       const filename = basename(item.relativePath);
-      const metadata = item.metadata || {};
-      return (filename + ' ' + (item.source || '') + ' ' + monthOf(item) + ' ' +
-        (metadata.cameraMake || '') + ' ' + (metadata.cameraModel || '') + ' ' +
-        (metadata.lensModel || '') + ' ' + (metadata.deviceFolder || '') + ' ' +
-        (metadata.latitude ?? '') + ' ' + (metadata.longitude ?? '')).toLocaleLowerCase().includes(query);
+      return (filename + ' ' + (item.source || '') + ' ' + monthOf(item)).toLocaleLowerCase().includes(query);
     });
   }
   return items;
@@ -255,10 +212,10 @@ function fillMediaGrid(container, items, options) {
 
 
 function ordered(items) {
-  return items.slice().sort((a, b) => mediaDate(b).getTime() - mediaDate(a).getTime());
+  return items.slice().sort((a, b) => (b.mtimeMs || 0) - (a.mtimeMs || 0));
 }
 function dateLabel(item) {
-  const d = mediaDate(item);
+  const d = new Date(item.mtimeMs);
   if (!Number.isFinite(d.getTime())) return '日期未知';
   return d.toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric',weekday:'long'});
 }
@@ -279,7 +236,7 @@ function fillTimelineGrid(container, items, options = {}) {
       const title = document.createElement('span');
       title.textContent = date;
       const hint = document.createElement('small');
-      hint.textContent = '照片优先按 EXIF / Takeout 拍摄时间，视频读取支持的容器时间 · 缺失时回退文件修改时间';
+      hint.textContent = '按文件修改时间排列';
       label.append(title, hint);
       container.append(label);
       prev = date;
@@ -336,9 +293,7 @@ function showViewerItem() {
   if (!item) return;
   const position = viewerItems.findIndex(x => x.relativePath === item.relativePath);
   $('viewer-title').textContent = basename(item.relativePath);
-  const camera = item.metadata && (item.metadata.cameraModel || item.metadata.cameraMake) ? ' · ' + [item.metadata.cameraMake, item.metadata.cameraModel].filter(Boolean).join(' ') : '';
-  const dateType = item.metadata && item.metadata.dateSource === 'exif' ? '拍摄时间' : item.metadata && item.metadata.dateSource === 'takeout' ? 'Takeout 时间' : item.metadata && item.metadata.dateSource === 'container' ? '视频容器时间' : '文件时间';
-  $('viewer-meta').textContent = dateLabel(item) + ' · ' + dateType + camera + ' · ' + formatSize(item.size) + ' · ' + (item.source || '本地文件');
+  $('viewer-meta').textContent = dateLabel(item) + ' · ' + formatSize(item.size) + ' · ' + (item.source || '本地文件');
   $('viewer-counter').textContent = (position + 1) + ' / ' + viewerItems.length;
   $('viewer-favorite').classList.toggle('is-active', !!item.favorite);
   $('viewer-favorite').setAttribute('aria-label', item.favorite ? '取消收藏' : '添加收藏');
@@ -357,36 +312,6 @@ function moveViewer(step) {
   if (next) { state.viewerItem = next; showViewerItem(); }
 }
 
-function placeKey(item) {
-  const metadata = item.metadata || {};
-  const latitude = Number(metadata.latitude);
-  const longitude = Number(metadata.longitude);
-  if (!metadata.gpsAvailable || !Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-  return latitude.toFixed(3) + ', ' + longitude.toFixed(3);
-}
-
-async function setGpsIndexing(enabled) {
-  if (!state.drive || state.busy) return;
-  if (enabled && !window.confirm('开启后，SmartBackup 会在本机读取照片 EXIF 和 Google Takeout sidecar 中的 GPS 坐标，并将坐标保存在移动硬盘的 .smartbackup/index.json 中用于地点分组。SmartBackup 不会单独上传这份坐标索引，也不会修改原始照片；如果你以后主动上传原照片，照片自带的 EXIF GPS 仍会随原文件上传。若 Takeout GPS 只保存在 JSON sidecar 中，开启后请重新选择原导出目录并重新导入一次。关闭时会清除当前索引及其备份中的 GPS 坐标。是否继续？')) return;
-  state.busy = true;
-  render();
-  try {
-    const result = await api.setGpsIndexing(enabled);
-    state.items = result.items || [];
-    state.storage = result.storage;
-    state.history = result.history || [];
-    state.settings = result.settings || { version: 1, includeGps: enabled };
-    state.group = null;
-    render();
-    toast(enabled ? '已开启本地地点整理，正在使用照片 GPS 信息分组' : '已关闭地点整理，索引中的 GPS 坐标已清除');
-  } catch (error) {
-    toast('地点整理设置失败：' + error.message);
-  } finally {
-    state.busy = false;
-    render();
-  }
-}
-
 function renderCollectionTab(items) {
   $('photo-section').hidden = true;
   $('video-section').hidden = true;
@@ -397,72 +322,19 @@ function renderCollectionTab(items) {
 
   if (!state.drive) {
     $('collection-heading').replaceWith(UI.createSectionHeading({
-      title: state.tab === 'favorites' ? '收藏夹' : state.tab === 'albums' ? '合集' : state.tab === 'sources' ? '设备与来源' : state.tab === 'people' ? '人物' : '地点',
+      title: state.tab === 'favorites' ? '收藏夹' : state.tab === 'albums' ? '合集' : state.tab === 'sources' ? '来源' : '地点',
       count: '',
-      icon: state.tab === 'places' ? 'map-pin' : state.tab === 'people' ? 'users' : 'layers'
+      icon: state.tab === 'places' ? 'map-pin' : 'layers'
     }));
     $('collection-view').querySelector('.section-head').id = 'collection-heading';
-    showEmpty(grid, '先连接备份硬盘', '连接移动硬盘后，就可以读取这块硬盘里的私人照片资料库。', '选择备份硬盘', chooseDrive, 'hard-drive');
+    showEmpty(grid, '先连接备份硬盘', '连接 WD Elements 后，就可以浏览这块硬盘里的相册资料库。', '选择备份硬盘', chooseDrive, 'hard-drive');
     return;
   }
 
   if (state.tab === 'places') {
-    if (!state.settings.includeGps) {
-      $('collection-heading').replaceWith(UI.createSectionHeading({ title: '地点', count: '隐私保护 · 默认关闭', icon: 'map-pin' }));
-      $('collection-view').querySelector('.section-head').id = 'collection-heading';
-      showEmpty(grid, '地点整理尚未开启', '为了保护隐私，SmartBackup 默认不读取 GPS。开启后只在本机提取照片位置，并把坐标保存在移动硬盘索引中；SmartBackup 不会单独上传这份坐标索引。原照片保持不变，若你以后主动上传原照片，照片内自带的 EXIF GPS 仍会随原文件上传。你可以随时关闭并清除索引中的坐标。', '开启本地 GPS 整理', () => setGpsIndexing(true), 'map-pin');
-      return;
-    }
-    const groups = new Map();
-    items.forEach(item => {
-      const key = placeKey(item);
-      if (!key) return;
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(item);
-    });
-    if (state.group) {
-      const groupItems = groups.get(state.group) || [];
-      $('collection-heading').replaceWith(UI.createSectionHeading({
-        title: 'GPS ' + state.group,
-        count: groupItems.length + ' 项',
-        icon: 'map-pin',
-        actionText: '返回全部',
-        onAction: () => { state.group = null; render(); }
-      }));
-      $('collection-view').querySelector('.section-head').id = 'collection-heading';
-      grid.className = 'media-grid collection-media-grid';
-      fillMediaGrid(grid, groupItems, { emptyTitle: '这个地点还没有媒体', emptyDescription: '返回地点列表查看其他位置。', icon: 'map-pin' });
-      return;
-    }
-    const sorted = Array.from(groups.entries()).sort((a, b) => b[1].length - a[1].length);
-    $('collection-heading').replaceWith(UI.createSectionHeading({
-      title: '地点',
-      count: sorted.length + ' 个位置',
-      icon: 'map-pin',
-      actionText: '关闭 GPS 整理',
-      onAction: () => setGpsIndexing(false)
-    }));
+    $('collection-heading').replaceWith(UI.createSectionHeading({ title: '地点', count: '即将推出', icon: 'map-pin' }));
     $('collection-view').querySelector('.section-head').id = 'collection-heading';
-    if (!sorted.length) {
-      showEmpty(grid, '还没有发现带位置的照片', '已在本机检查照片元数据，但没有找到可用的 GPS 坐标。没有 GPS 的照片仍会正常按拍摄日期和设备整理。', '', null, 'map-pin');
-      return;
-    }
-    sorted.forEach(([coordinate, groupItems]) => {
-      grid.append(UI.createFolderCard({
-        icon: 'map-pin',
-        name: '附近位置 · ' + coordinate,
-        count: groupItems.length,
-        detail: groupItems.filter(item => item.kind === 'Photos').length + ' 张照片 · ' + groupItems.filter(item => item.kind === 'Videos').length + ' 个视频',
-        onClick: () => { state.group = coordinate; render(); }
-      }));
-    });
-    return;
-  }
-
-  if (state.tab === 'people') {
-    $('collection-heading').replaceWith(UI.createSectionHeading({ title: '人物', count: '本地功能规划中', icon: 'users' }));
-    $('collection-view').querySelector('.section-head').id = 'collection-heading';
-    showEmpty(grid, '人物智能整理正在开发', '后续会提供可选的本地人脸聚类：只在你的电脑上分析照片，不上传云端、不自动识别真实身份；由你决定是否启用，并由你给人物分组命名。', '', null, 'users');
+    showEmpty(grid, '地点整理正在开发中', '后续版本会读取照片 EXIF / GPS 信息，将照片按拍摄地点归类。当前版本不会猜测地点，也不会修改原始照片。', '', null, 'map-pin');
     return;
   }
 
@@ -480,22 +352,16 @@ function renderCollectionTab(items) {
   }
 
   const isAlbums = state.tab === 'albums';
-  const title = isAlbums ? '按拍摄时间整理' : '设备与来源';
-  const iconName = isAlbums ? 'calendar' : 'folder-down';
-  const keyOf = item => isAlbums
-    ? monthOf(item)
-    : item.metadata && (item.metadata.cameraModel || item.metadata.cameraMake)
-      ? '设备 · ' + [item.metadata.cameraMake, item.metadata.cameraModel].filter(Boolean).join(' ')
-      : item.metadata && item.metadata.deviceFolder
-        ? 'Takeout 设备目录 · ' + item.metadata.deviceFolder
-        : '来源 · ' + (item.source || '导入文件');
+  const title = isAlbums ? '合集' : '来源';
+  const iconName = isAlbums ? 'layers' : 'folder-down';
+  const keyOf = item => isAlbums ? monthOf(item) : (item.source || '导入文件');
   if (state.group) {
     const groupItems = items.filter(item => keyOf(item) === state.group);
     $('collection-heading').replaceWith(UI.createSectionHeading({
       title: state.group,
       count: groupItems.length + ' 项',
       icon: isAlbums ? 'calendar' : 'folder',
-      actionText: '返回全部',
+      actionText: '返回全部' ,
       onAction: () => { state.group = null; render(); }
     }));
     $('collection-view').querySelector('.section-head').id = 'collection-heading';
@@ -518,7 +384,7 @@ function renderCollectionTab(items) {
   $('collection-heading').replaceWith(UI.createSectionHeading({ title, count: sorted.length + ' 个', icon: iconName }));
   $('collection-view').querySelector('.section-head').id = 'collection-heading';
   if (!sorted.length) {
-    showEmpty(grid, isAlbums ? '还没有可整理的合集' : '还没有来源记录', '导入照片和视频后，SmartBackup 会优先按真实拍摄时间和相机型号整理；没有这些元数据时会回退到文件时间和来源。', '选择来源文件夹', chooseSource, iconName);
+    showEmpty(grid, isAlbums ? '还没有可整理的合集' : '还没有来源记录', '备份照片和视频后，SmartBackup 会自动按文件时间和来源建立合集。', '选择来源文件夹', chooseSource, iconName);
     return;
   }
   sorted.forEach(([name, groupItems]) => {
@@ -538,8 +404,8 @@ function renderSyncView() {
   $('sync-cloud-progress').textContent = state.cloudMessage;
   $('sync-pick').disabled = state.busy;
   $('sync-import').disabled = state.busy || !state.drive || !state.source;
-  $('sync-refresh-gphotos').disabled = state.busy;
-  $('sync-upload').disabled = state.busy || !state.drive || !$('sync-gphotos-remote').value;
+  $('sync-refresh-gdrive').disabled = state.busy;
+  $('sync-upload').disabled = state.busy || !state.drive || !$('sync-gdrive-remote').value;
   $('sync-cancel-cloud').hidden = !state.cloudBusy;
   $('sync-verify').disabled = state.busy || !state.drive;
   $('sync-open-library').disabled = !state.drive;
@@ -563,7 +429,7 @@ function renderSyncView() {
       summary.textContent=item.type==='verify'
         ? '完整性核验 · 通过 '+item.checked+' 项检查中的 '+Math.max(0,item.checked-item.corrupt-item.missing-item.failed)+' 项 · 损坏 '+item.corrupt+' · 缺失 '+item.missing+' · 曾修改 '+(item.modified||0)+' · 未收录 '+item.unindexed
         : item.type==='cloud'
-          ? 'Google Photos 上传 · 新增 '+item.uploaded+' · 失败 '+item.failed
+          ? 'Google Drive 上传 · 新增 '+item.uploaded+' · 失败 '+item.failed
           : '本地备份 · 新增 '+item.copied+' · 重复 '+item.duplicates+' · 失败 '+item.failed;
       const status=document.createElement('b');
       status.textContent=item.status==='ok'?'已完成':item.status==='cancelled'?'已取消':'需检查';
@@ -610,7 +476,7 @@ function render() {
   } else {
     renderCollectionTab(items);
   }
-  const labels = {photos:['照片','优先按真实拍摄时间排列，保留原始文件'],videos:['视频','浏览你保存的所有视频'],albums:['相册','按 EXIF / Takeout 拍摄年月自动整理'],favorites:['收藏夹','你珍藏的每一个瞬间'],places:['地点','可选的本地 GPS 分组，默认关闭'],people:['人物','本地人物分组功能正在规划'],sources:['来源设备','按相机型号与导入来源整理'],sync:['备份中心','手机经电脑到硬盘，云端作为第二份独立备份']};
+  const labels = {photos:['照片','按时间整理的照片与视频'],videos:['视频','浏览你保存的所有视频'],albums:['相册','按照月份整理你的回忆'],favorites:['收藏夹','你珍藏的每一个瞬间'],places:['地点','地图与拍摄位置功能开发中'],sources:['来源设备','查看不同导入来源'],sync:['备份中心','手机经电脑到硬盘，云端作为第二份独立备份']};
   const label = labels[state.tab] || labels.photos;
   $('page-title').textContent = label[0];
   $('page-subtitle').textContent = label[1];
@@ -625,7 +491,6 @@ async function chooseDrive() {
     state.storage = result.storage;
     state.items = result.items || [];
     state.history = result.history || [];
-    state.settings = result.settings || { version: 1, includeGps: false };
     state.group = null;
     state.expandedPhotos = false;
     state.expandedVideos = false;
@@ -658,7 +523,6 @@ async function refresh() {
     state.items = result.items || [];
     state.storage = result.storage;
     state.history = result.history || [];
-    state.settings = result.settings || state.settings;
     render();
     toast('相册已更新');
   } catch (error) {
@@ -692,7 +556,6 @@ async function runBackup() {
     state.items = view.items || [];
     state.storage = view.storage;
     state.history = view.history || [];
-    state.settings = view.settings || state.settings;
     toast(message + (result.historyWarning ? '（备份记录未保存）' : ''));
   } catch (error) {
     $('progress-state').textContent = '备份失败';
@@ -736,17 +599,17 @@ $('viewer-favorite').addEventListener('click', async () => {
     render();
   } catch (e) { toast('收藏失败：' + e.message); }
 });
-async function detectGooglePhotos() {
+async function detectGoogleDrive() {
   state.cloudMessage = '正在检查 rclone 配置……';
   renderSyncView();
   try {
-    const names = await api.googlePhotosRemotes();
+    const names = await api.googleDriveRemotes();
     state.cloudRemotes = names;
-    const selector = $('sync-gphotos-remote');
+    const selector = $('sync-gdrive-remote');
     selector.replaceChildren();
     const placeholder = document.createElement('option');
     placeholder.value = '';
-    placeholder.textContent = '请选择 Google Photos 连接';
+    placeholder.textContent = '请选择 Google Drive 连接';
     selector.append(placeholder);
     names.forEach(name => {
       const option = document.createElement('option');
@@ -755,21 +618,21 @@ async function detectGooglePhotos() {
       selector.append(option);
     });
     if (names.length === 1) selector.value = names[0];
-    state.cloudMessage = names.length ? '已发现 ' + names.length + ' 个 Google Photos 连接。仅会上传当前硬盘尚未记录成功的照片。' : '没有发现 Google Photos 连接。请先运行 rclone config 创建类型为 Google Photos 的 remote。';
+    state.cloudMessage = names.length ? '已发现 ' + names.length + ' 个 Google Drive 连接。仅会上传当前硬盘尚未记录成功的照片和视频。' : '没有发现 Google Drive 连接。请先运行 rclone config 创建类型为 Google Drive（drive 类型）的 remote。';
   } catch (e) {
     state.cloudMessage = e.message;
   }
   renderSyncView();
 }
-async function runGooglePhotosUpload() {
-  const remote = $('sync-gphotos-remote').value;
+async function runGoogleDriveUpload() {
+  const remote = $('sync-gdrive-remote').value;
   if (!state.drive || !remote || state.busy) return;
   state.cloudBusy = true;
   state.busy = true;
   state.cloudMessage = '正在检查文件和上传记录……';
   render();
   try {
-    const result = await api.uploadGooglePhotos(remote);
+    const result = await api.uploadGoogleDrive(remote);
     state.cloudMessage = '新增上传 ' + result.uploaded + ' 项 · 原已上传 ' + result.alreadyUploaded + ' 项 · 失败 ' + result.failed + ' 项' + (result.cancelled ? ' · 已取消' : '');
     state.history = (await api.refresh()).history || [];
     toast(state.cloudMessage);
@@ -783,7 +646,7 @@ async function runGooglePhotosUpload() {
   }
 }
 api.onCloudProgress(info => {
-  state.cloudMessage = 'Google Photos：已处理 ' + info.current + ' / ' + info.total + ' · 成功 ' + info.uploaded + ' · 失败 ' + info.failed;
+  state.cloudMessage = 'Google Drive：已处理 ' + info.current + ' / ' + info.total + ' · 成功 ' + info.uploaded + ' · 失败 ' + info.failed;
   if (state.tab === 'sync') $('sync-cloud-progress').textContent = state.cloudMessage;
 });
 async function runVerify() {
@@ -808,19 +671,15 @@ api.onVerifyProgress(info=>{
 });
 $('sync-verify').addEventListener('click',runVerify);
 $('sync-cancel-verify').addEventListener('click',()=>api.cancelBackup().then(()=>toast('已请求取消核验')));
-$('sync-open-google').addEventListener('click',()=>api.openGooglePhotos().catch(e=>toast('打开网页失败：'+e.message)));
+$('sync-open-gdrive').addEventListener('click',()=>api.openGooglePhotos().catch(e=>toast('打开网页失败：'+e.message)));
 $('sync-open-library').addEventListener('click',()=>api.openLibraryFolder().catch(e=>toast('打开照片目录失败：'+e.message)));
 $('sync-origin').addEventListener('change', () => { state.source=null;render();toast('来源类型已切换，请重新选择要导入的文件夹'); });
 $('sync-pick').addEventListener('click', () => chooseSource());
 $('sync-import').addEventListener('click', runBackup);
-$('sync-refresh-gphotos').addEventListener('click', detectGooglePhotos);
-$('sync-gphotos-remote').addEventListener('change', renderSyncView);
-$('sync-upload').addEventListener('click', runGooglePhotosUpload);
-$('sync-cancel-cloud').addEventListener('click', () => api.cancelGooglePhotos().then(() => toast('已请求取消云端上传')));
-$('theme-toggle').addEventListener('click', () => {
-  const current = document.documentElement.dataset.theme;
-  applyTheme(current === 'dark' ? 'light' : 'dark');
-});
+$('sync-refresh-gdrive').addEventListener('click', detectGoogleDrive);
+$('sync-gdrive-remote').addEventListener('change', renderSyncView);
+$('sync-upload').addEventListener('click', runGoogleDriveUpload);
+$('sync-cancel-cloud').addEventListener('click', () => api.cancelGoogleDrive().then(() => toast('已请求取消云端上传')));
 $('connect-drive-top').addEventListener('click', chooseDrive);
 $('choose-drive').addEventListener('click', chooseDrive);
 $('choose-source').addEventListener('click', chooseSource);
