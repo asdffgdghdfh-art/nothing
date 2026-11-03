@@ -93,7 +93,7 @@ GitHub Actions 在 Ubuntu、Windows x64、macOS ARM64 和 Android 构建 APK，�
 >
 > 本项目**不是 Immich 官方客户端或 Immich 源码移植**，界面是针对 Electron 的独立重新实现。官方 Immich 采用 SvelteKit、服务端和数据库，不能作为无服务器应用简单放入移动硬盘。参考了界面交互思路，未移植其 AGPL 源代码。只有完成的能力才会显示为可用。
 >
-> **数据安全：** 原有 SHA-256 严格去重、原文件复制、哈希校验、硬盘内索引依旧保留。请先使用空文件夹验证；Android 直接备份 APK 和 MTP 直读尚未实现。
+> **数据安全：** 原有 SHA-256 严格去重、原文件复制、哈希校验、硬盘内索引依旧保留。Android OTG companion 已加入；首次请用少量照片和备用盘验证 SAF 与外置盘行为。
 
 ## V0.4.0 已实施（桌面测试版）
 
@@ -109,13 +109,13 @@ GitHub Actions 在 Ubuntu、Windows x64、macOS ARM64 和 Android 构建 APK，�
 
 ## 接下来尚未完成
 
-人物本地聚类、MKV / AVI / MTS 等其他视频容器的拍摄时间、MTP / Android 直连
+人物本地聚类、MKV / AVI / MTS 等其他视频容器的拍摄时间、Windows 桌面端 MTP 设备直接浏览
 
 ---
 
 跨平台、离线优先的照片和视频备份工具。旧版说明：**V0.1 桌面版 MVP**。将打包后的 Windows 便携 EXE 或 macOS App 放在 WD Elements/移动 SSD 上，在对应电脑上运行即可；媒体和去重索引均保存到所选择的外置硬盘目录内。
 
- > 当前状态：桌面端文件夹备份可用；EXIF / Takeout 拍摄时间、相机型号整理已加入；GPS 地点默认关闭并可选择开启。**Android APK、Windows MTP 手机直读、Mac Android 桥接、人物聚类尚未实现**。目前可先用手机的文件传输方式将照片复制到电脑文件夹，再通过 SmartBackup 备份；Windows MTP 直接扫描是后续目标。
+ > 当前状态：桌面端文件夹备份可用；EXIF / Takeout 拍摄时间、相机型号整理已加入；GPS 地点默认关闭并可选择开启。**Android OTG companion 已实现并可构建 APK**，可直接扫描手机 MediaStore 并备份到移动硬盘；Windows 桌面端 MTP 手机直读、Mac Android 桥接和人物聚类仍未实现。
 
 ## 功能
 
