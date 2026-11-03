@@ -71,6 +71,9 @@ test('failed Google Drive uploads are not written to the success ledger and are 
 test('Google Drive destination uses a full content hash and rejects unsafe paths',()=>{
  const item={relativePath:'Photos/2026/11/IMG_001.jpg',sha256:'a'.repeat(64)};
  assert.equal(googleDriveUploadName(item),'a'.repeat(64)+'-IMG_001.jpg');
+ const unicodeItem={...item,relativePath:'Photos/2026/11/我的照片.jpg'};
+ assert.equal(googleDriveUploadName(unicodeItem),'a'.repeat(64)+'-我的照片.jpg');
+ assert.equal(googleDriveDestination('gdrive',{...item,relativePath:'Photos/2026/11/album/IMG_001.jpg'}),'gdrive:SmartBackup/Photos/2026/11/album/'+'a'.repeat(64)+'-IMG_001.jpg');
  assert.equal(googleDriveDestination('gdrive',item),'gdrive:SmartBackup/Photos/2026/11/'+'a'.repeat(64)+'-IMG_001.jpg');
  assert.throws(()=>googleDriveDestination('gdrive',{...item,relativePath:'../secret.jpg'}),/无效/);
  assert.throws(()=>googleDriveDestination('-remote',item),/连接名称/);
