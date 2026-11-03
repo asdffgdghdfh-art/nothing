@@ -142,14 +142,14 @@ function googleDriveUploadName(item) {
   if (!/^[a-f0-9]{64}$/.test(item.sha256 || '')) throw new Error('无效的 SHA-256 文件标识');
   const rel = String(item.relativePath || '').replace(/[\\/]+/g, '/');
   const original = rel.split('/').pop() || 'media';
-  const safeName = original.replace(/[^A-Za-z0-9_.()-]/g, '_').slice(-120);
+  const safeName = original.replace(/[\\/\u0000-\u001f]/g, '_').slice(-160);
   return item.sha256 + '-' + safeName;
 }
 function googleDriveDestination(remote, item) {
   if (!validRemote(remote)) throw new Error('无效的 Google Drive 连接名称');
   if (!isGoogleDriveMediaItem(item)) throw new Error('照片库路径或文件哈希无效');
   const parts = String(item.relativePath).replace(/[\\/]+/g, '/').split('/');
-  return remote + ':SmartBackup/' + parts.slice(0, 3).join('/') + '/' + googleDriveUploadName(item);
+  return remote + ':SmartBackup/' + parts.slice(0, -1).join('/') + '/' + googleDriveUploadName(item);
 }
 function planGoogleDriveUploads(index, ledger, remote) {
   if (!validRemote(remote)) throw new Error('无效的云端配置名称');
