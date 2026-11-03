@@ -21,10 +21,7 @@ test('archive verification detects corruption even if size and mtime do not chan
   assert.equal(audit.corrupt,0);
   const oldIndex=await readIndex(drive);
   assert.match(oldIndex.items[0].source,/手机/);
-  const stored=path.join(drive,oldIndex.items[0].relativePath);
-  const debugCore=require('../src/core.cjs');
-  console.log('DEBUG_VERIFY',process.platform,JSON.stringify(oldIndex.items),debugCore.safeRelative(oldIndex.items[0].relativePath),stored,await fs.stat(stored).then(x=>x.size));
-  const oldStat=await fs.stat(stored);
+  const stored=path.join(drive,oldIndex.items[0].relativePath);  const oldStat=await fs.stat(stored);
   await fs.writeFile(stored,'CHANGED!-123'); // exactly same length
   await fs.utimes(stored,oldStat.atime,oldStat.mtime);
   audit=await verifyArchive(drive);
@@ -89,7 +86,7 @@ test('backup does not skip a photo only because an existing damaged file kept th
   await fs.writeFile(target,'BAD!-PHOTO');
   await fs.utimes(target,old.atime,old.mtime);
   const again=await backup({source,drive});
-  assert.equal(again.copied,1);
+  assert.equal(again.copied,1,JSON.stringify(again));
   assert.equal(again.duplicates,0);
   const audit=await verifyArchive(drive);
   assert.equal(audit.corrupt,1);
@@ -97,6 +94,26 @@ test('backup does not skip a photo only because an existing damaged file kept th
   assert.equal(await fs.readFile(path.join(source,'portrait.jpg'),'utf8'),'GOOD-PHOTO');
  }finally{await fs.rm(root,{recursive:true,force:true});}
 });
+
+test('archive root symlink aliases stay verifiable and relative paths remain portable',async(t)=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'sb-root-alias-'));
+ try{
+  const source=path.join(root,'source'),realDrive=path.join(root,'real-drive'),alias=path.join(root,'drive-link');
+  await fs.mkdir(source);await fs.mkdir(realDrive);
+  await fs.writeFile(path.join(source,'portable.jpg'),'PORTABLE-PHOTO');
+  try{await fs.symlink(realDrive,alias,'dir');}catch{t.skip('symlink creation is not available on this runner');return;}
+  const result=await backup({source,drive:alias});
+  assert.equal(result.copied,1);
+  const index=await readIndex(realDrive);
+  assert.equal(index.items.length,1);
+  assert.ok(index.items[0].relativePath.startsWith('Photos/'));
+  assert.equal(index.items[0].relativePath.includes('\\'),false);
+  const audit=await verifyArchive(alias);
+  assert.equal(audit.ok,1);
+  assert.equal(audit.corrupt,0);
+ }finally{await fs.rm(root,{recursive:true,force:true});}
+});
+
 test('backup rejects a symlink that masks overlapping source and disk folders',async(t)=>{
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'sb-alias-'));
  try{
