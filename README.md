@@ -1,3 +1,90 @@
+# SmartBackup V0.7.0 · 跨设备便携照片库（集成开发版）
+
+> 目标：同一块移动硬盘作为唯一照片库，在 Windows、macOS 和 Android OTG 之间共享原始照片、视频、SHA-256 去重索引、历史记录和设备身份。现有 V0.4 照片目录与索引保持兼容，不重新复制已有文件。
+
+## V0.7.0 本轮集成范围
+
+- **移动硬盘身份：** 首次选择硬盘时创建 `.smartbackup/device.json`，生成稳定 UUID；旧版 `Photos/`、`Videos/`、`index.json` 不迁移、不重命名。
+- **Windows / macOS 自动匹配：** 桌面端扫描已挂载卷中的设备标识。只有一个已登记硬盘时自动连接；多块硬盘时优先匹配当前便携程序所在的硬盘，否则要求用户手动选择，避免选错库。
+- **配置随盘：** 主题、GPS 索引设置、索引、收藏和备份历史写入硬盘的 `.smartbackup/`。从可移动卷启动桌面便携程序时，Electron 的 userData / sessionData 也指向该卷。
+- **Android OTG companion：** 新增原生 Android 应用。首次使用需在系统文件选择器中选中移动硬盘根目录并授权；应用保存 SAF 持久 URI 授权，后续尝试恢复同一硬盘。
+- **Android 原件备份：** 读取用户授权的 MediaStore 照片和视频，按拍摄日期归档，SHA-256 去重，复制到临时文件后校验再改为正式文件名；同步更新桌面端可识别的 V1 索引和备份历史。
+- **不删除原件：** 所有平台均不自动删除手机或电脑来源文件；遇到无法安全写入或校验失败时不把文件记为成功。
+
+## 目录结构
+
+```text
+移动硬盘/
+  SmartBackup-0.7.0-Windows-x64.exe
+  SmartBackup.app/
+  Photos/
+    2026/11/IMG_001.jpg
+  Videos/
+    2026/11/VID_001.mp4
+  .smartbackup/
+    device.json
+    index.json
+    index.json.bak
+    settings.json
+    history.json
+    runtime/                 # 从此硬盘启动桌面端时的 Electron 配置
+```
+
+Android APK 需要安装到手机的应用空间，不能像 Windows EXE 一样直接从 U 盘双击运行；照片数据和索引仍保存在移动硬盘。
+
+## 首次使用
+
+### Windows
+1. 将便携 EXE 放到移动硬盘根目录或其子文件夹。
+2. 双击运行；第一次会在硬盘创建 `.smartbackup/device.json`。
+3. 如果硬盘已有 V0.4 照片库，选择它的根目录即可登记身份，原文件与索引不会被清空。
+4. 以后在同一台电脑或另一台电脑插入已登记硬盘，程序会尝试自动匹配。应用运行期间也会定期检测新插入的硬盘。
+
+### macOS
+1. 解压 ARM64 ZIP，将 `SmartBackup.app` 放在移动硬盘上。
+2. 首次启动时授权访问硬盘；如果 macOS 安全机制阻止未签名应用，需要在系统设置中确认允许。
+3. 同一硬盘可以与 Windows 共用目录和索引。当前 CI 产物针对 Apple Silicon（M 系列）构建。
+
+### Android OTG
+1. 在 Android 手机安装 SmartBackup APK。
+2. 用支持数据传输的 OTG 转接头连接移动硬盘；机械硬盘可能需要带独立供电的 OTG Hub。
+3. 首次打开应用，点击「连接移动硬盘」，在系统文件选择器中选中**移动硬盘根目录**，并授予读写权限。
+4. 授权照片和视频读取权限，再点击「开始备份到移动硬盘」。
+5. 备份完成后，在 Windows / macOS 桌面端打开同一硬盘即可浏览 Android 写入的照片库。
+
+Android 的 USB 访问遵循 SAF 授权模型：系统不允许应用在插入 USB 时无提示地自动启动或绕过用户授权。每台新手机都需要首次授权一次；同一手机会尝试恢复持久授权。部分 Android 厂商文件选择器对外置卷根目录的支持不同，若无法选择根目录，需要更新系统组件或换用支持 USB OTG 的文件管理器/系统选择器。
+
+## 自动匹配规则与安全边界
+
+- 设备身份以 `.smartbackup/device.json` 中的 UUID 为准，不依赖盘符（E: / F:）或卷标。
+- 桌面端自动扫描 Windows 盘符、macOS `/Volumes` 和常见 Linux 挂载目录。若发现多块已登记硬盘，不会随意选一块。
+- 从移动硬盘启动时，桌面端尽可能把 Electron 用户配置和会话缓存写入该盘；系统临时目录、操作系统日志和杀毒软件扫描记录仍可能留在主机上，因此不能承诺绝对零本地痕迹。
+- Android 的 SAF 授权记录由 Android 系统保存在手机本地；这是操作系统权限凭据，不是照片库数据。
+- 多台设备不能同时写入同一块硬盘。请先安全弹出硬盘，再换设备使用，避免索引并发覆盖。
+- 设备标识文件若存在但内容损坏，程序会停止自动重建，以免把旧照片库误认成新设备。
+- 本轮 Android 版本读取系统媒体库中的照片和视频；云端网盘直连、后台自动备份、USB 插入自动启动、MTP 文件夹浏览仍不属于本轮已完成能力。
+- 首次测试请使用少量照片和备用盘；重要照片至少保留另一份独立副本。
+
+## 构建与测试
+
+桌面端：
+```bash
+npm install
+npm test
+npm run pack:win
+npm run pack:mac
+```
+
+Android：
+```bash
+cd android
+gradle assembleDebug
+```
+
+GitHub Actions 在 Ubuntu、Windows x64、macOS ARM64 和 Android 构建 APK，并将产物上传为 14 天有效的 Actions Artifacts。构建成功后再下载测试，不把未通过构建的提交标记为可发布版本。
+
+---
+
 > **V0.4.0：私人照片管家基础版。** 在 V0.3 的原画备份、SHA-256 去重和完整性核验之上，新增 EXIF / Google Takeout 拍摄时间、相机型号整理，以及默认关闭、可随时清除的本地 GPS 地点分组。人物聚类仍在规划中。
 
 # SmartBackup V0.4.0 · 私人照片管家（桌面测试版）
@@ -6,7 +93,7 @@
 >
 > 本项目**不是 Immich 官方客户端或 Immich 源码移植**，界面是针对 Electron 的独立重新实现。官方 Immich 采用 SvelteKit、服务端和数据库，不能作为无服务器应用简单放入移动硬盘。参考了界面交互思路，未移植其 AGPL 源代码。只有完成的能力才会显示为可用。
 >
-> **数据安全：** 原有 SHA-256 严格去重、原文件复制、哈希校验、硬盘内索引依旧保留。请先使用空文件夹验证；Android 直接备份 APK 和 MTP 直读尚未实现。
+> **数据安全：** 原有 SHA-256 严格去重、原文件复制、哈希校验、硬盘内索引依旧保留。Android OTG companion 已加入；首次请用少量照片和备用盘验证 SAF 与外置盘行为。
 
 ## V0.4.0 已实施（桌面测试版）
 
@@ -22,13 +109,13 @@
 
 ## 接下来尚未完成
 
-人物本地聚类、MKV / AVI / MTS 等其他视频容器的拍摄时间、MTP / Android 直连
+人物本地聚类、MKV / AVI / MTS 等其他视频容器的拍摄时间、Windows 桌面端 MTP 设备直接浏览
 
 ---
 
 跨平台、离线优先的照片和视频备份工具。旧版说明：**V0.1 桌面版 MVP**。将打包后的 Windows 便携 EXE 或 macOS App 放在 WD Elements/移动 SSD 上，在对应电脑上运行即可；媒体和去重索引均保存到所选择的外置硬盘目录内。
 
- > 当前状态：桌面端文件夹备份可用；EXIF / Takeout 拍摄时间、相机型号整理已加入；GPS 地点默认关闭并可选择开启。**Android APK、Windows MTP 手机直读、Mac Android 桥接、人物聚类尚未实现**。目前可先用手机的文件传输方式将照片复制到电脑文件夹，再通过 SmartBackup 备份；Windows MTP 直接扫描是后续目标。
+ > 当前状态：桌面端文件夹备份可用；EXIF / Takeout 拍摄时间、相机型号整理已加入；GPS 地点默认关闭并可选择开启。**Android OTG companion 已实现并可构建 APK**，可直接扫描手机 MediaStore 并备份到移动硬盘；Windows 桌面端 MTP 手机直读、Mac Android 桥接和人物聚类仍未实现。
 
 ## 功能
 
@@ -71,7 +158,7 @@ npm test
 
 - Windows：`npm run pack:win` 生成便携 `.exe`。
 - Mac：`npm run pack:mac` 生成含 `.app` 的 ZIP（当前未签名/公证，macOS 可能拦截首次运行）。
-- GitHub Actions 在每次推送 `main` 后分别在 Windows/macOS（Apple Silicon ARM64）构建，并上传到该次工作流的 **Artifacts**。这是构建产物而非已发布正式安装包，必须等构建成功后下载。
+- GitHub Actions 在每次推送 `main` 后分别在 Windows/macOS 构建，并上传到该次工作流的 **Artifacts**。这是构建产物而非已发布正式安装包，必须等构建成功后下载。
 
 Windows/Mac 客户端不要求管理员权限，但打包运行仍可能生成系统缓存、配置或解压临时文件；“便携”不代表完全不写入宿主电脑。用前请先用一个空的测试目录或备用盘验证，勿在唯一一份重要照片上首测。
 
@@ -141,7 +228,7 @@ Takeout Unix 时间戳、QuickTime 容器创建时间与文件修改时间则保
 
 
 ## 本机运行测试与打包
-GitHub-hosted runner 暂不可用时，可以在对应系统本机完成构建。请直接克隆本构建仓库的 main 分支：
+GitHub-hosted runner 暂不可用时，可以在对应系统本机完成构建。请先拉取 feature/dark-mode-v0-3 分支：
 
 **Windows PowerShell**
 ```powershell
@@ -158,7 +245,3 @@ npm run pack:mac
 ```
 
 打包产物位于项目 dist/ 目录。Windows 和 macOS 请分别在对应系统上构建；首次安装依赖需要网络。当前版本未配置代码签名，macOS 首次打开可能需要在系统安全设置中手动允许。
-
-
-## 公开构建镜像说明
-本仓库仅作为 SmartBackup 的公开自动构建镜像：用于 GitHub Actions 标准 Runner 免费构建 Windows 与 macOS 安装包。开发源仓库仍保留在维护者的私有仓库中；同步到本仓库前应完成敏感信息检查。当前仓库未附带开源许可证，不代表授予他人复制、修改或再分发的许可。请勿在 Issues、日志或提交中上传个人照片、索引、云盘令牌或其他私密数据。

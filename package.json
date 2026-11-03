@@ -1,12 +1,12 @@
 {
   "name": "smartbackup",
-  "version": "0.4.0",
+  "version": "0.7.0",
   "private": true,
-  "description": "Offline-first photo backup and private photo organizer with EXIF dates, optional local GPS grouping and verified removable-drive backups",
+  "description": "Portable cross-device photo library for Windows, macOS and Android OTG",
   "main": "src/main.cjs",
   "scripts": {
     "start": "electron .",
-    "test": "node --check src/components.js && node --check src/renderer.js && node --check src/main.cjs && node --check src/core.cjs && node --check src/metadata.cjs && node --check src/history.cjs && node --check src/cloud-sync.cjs && node --test tests/*.test.cjs",
+    "test": "node --check src/components.js && node --check src/renderer.js && node --check src/main.cjs && node --check src/portable.cjs && node --check src/core.cjs && node --check src/metadata.cjs && node --check src/history.cjs && node --check src/cloud-sync.cjs && node --test tests/*.test.cjs",
     "pack:win": "electron-builder --win portable --publish never",
     "pack:mac": "electron-builder --mac zip --arm64 --publish never"
   },
