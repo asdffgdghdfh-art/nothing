@@ -1,0 +1,45 @@
+{
+  "name": "smartbackup",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Offline-first photo backup and private photo organizer with EXIF dates, optional local GPS grouping and verified removable-drive backups",
+  "main": "src/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --check src/components.js && node --check src/renderer.js && node --check src/main.cjs && node --check src/core.cjs && node --check src/metadata.cjs && node --check src/history.cjs && node --check src/cloud-sync.cjs && node --test tests/*.test.cjs",
+    "pack:win": "electron-builder --win portable --publish never",
+    "pack:mac": "electron-builder --mac zip --arm64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "^34.5.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "io.smartbackup.desktop",
+    "productName": "SmartBackup",
+    "asar": true,
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "artifactName": "SmartBackup-${version}-Windows-${arch}.${ext}"
+    },
+    "mac": {
+      "target": [
+        "zip"
+      ],
+      "category": "public.app-category.photography",
+      "artifactName": "SmartBackup-${version}-macOS-${arch}.${ext}"
+    }
+  },
+  "dependencies": {
+    "exifr": "^7.1.3"
+  }
+}
