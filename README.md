@@ -1,4 +1,4 @@
-> **V0.4.0 方案 A（电脑中转、移动硬盘、Google Drive 双份备份）：** 手机/网盘下载目录 → 移动硬盘，移动硬盘 → Google Drive（rclone 已配置并授权时增量上传），详见 [SYNC_DESIGN.md](SYNC_DESIGN.md)。百度网盘 API 直连仍未实现；Google Drive 上传需在电脑配置 rclone 的 drive 类型连接。
+> **V0.4.0 方案 A（电脑中转、移动硬盘、Google Drive 双份备份）：** 手机/百度网盘下载目录 → 电脑临时文件夹 → 移动硬盘，移动硬盘 → Google Drive（rclone 已配置并授权时增量上传），详见 [SYNC_DESIGN.md](SYNC_DESIGN.md)。百度网盘 API 直连仍未实现；Google Drive 上传需在电脑配置 rclone 的 drive 类型连接。
 
 # SmartBackup V0.4.0 · 便携照片库
 
@@ -14,7 +14,8 @@
 - 照片与视频混合时间轴，按照**文件修改时间**分组（尚未读取 EXIF 拍摄时间）。
 - 每页最多展示 240 项并支持按需加载，避免初次打开过多图片。
 - 原位全屏预览，方向键切换、Esc 关闭、系统外部打开和收藏；浏览器/系统不支持的 HEIC 或视频编码可能只显示占位图。
-- 文件级增量备份、SHA-256 去重和复制后校验逻辑保持不变。\n- Google Drive 单向增量备份：识别 rclone `drive` remote，按原有 Photos/Videos 目录上传，使用完整 SHA-256 文件名和硬盘内上传账本；不删除原件，并通过 `--immutable` 避免覆盖不同内容。
+- 文件级增量备份、SHA-256 去重和复制后校验逻辑保持不变。
+- Google Drive 单向增量备份：识别 rclone `drive` remote，按原有 Photos/Videos 目录上传，使用完整 SHA-256 文件名和硬盘内上传账本；不删除原件，并通过 `--immutable` 避免覆盖不同内容。
 - 照片浏览、硬盘导入和完整性核验可离线运行；仅在用户主动点击 Google Drive 上传时访问云端，不删除来源照片或硬盘原件。
 
 ## 接下来尚未完成
@@ -82,7 +83,7 @@ Windows/Mac 客户端不要求管理员权限，但打包运行仍可能生成�
 
 ## 当前限制与数据安全
 
-- **不是整机/相册自动扫描**：当前只扫描用户明确选择的普通文件夹，暂不支持 MTP 设备直接识别、Android App 私有目录、iCloud/Google Photos 云端内容。
+- **不是整机/相册自动扫描**：当前只扫描用户明确选择的普通文件夹，暂不支持 MTP 设备直接识别、Android App 私有目录、iCloud 云端读取或 Google Photos API 直连；Google Photos Takeout 导出目录可以作为普通文件夹导入。
 - 断点续传是**文件级**：已复制且校验成功的文件下次会跳过，未完成的文件会重传；不支持单一超大视频精确到字节续传。
 - 复制过程会重新读取文件以校验，扫描大量照片或机械硬盘时可能较慢。最好不要同时从多个电脑运行并写入同一个硬盘（索引目前是单写者模型）。
 - 相似图识别、GPS、EXIF 拍摄日期、MTP、Android 直连、失败文件详细日志面板均在后续阶段。
