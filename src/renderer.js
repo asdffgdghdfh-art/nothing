@@ -671,7 +671,7 @@ api.onVerifyProgress(info=>{
 });
 $('sync-verify').addEventListener('click',runVerify);
 $('sync-cancel-verify').addEventListener('click',()=>api.cancelBackup().then(()=>toast('已请求取消核验')));
-$('sync-open-gdrive').addEventListener('click',()=>api.openGooglePhotos().catch(e=>toast('打开网页失败：'+e.message)));
+$('sync-open-gdrive').addEventListener('click',()=>api.openGoogleDrive().catch(e=>toast('打开网页失败：'+e.message)));
 $('sync-open-library').addEventListener('click',()=>api.openLibraryFolder().catch(e=>toast('打开照片目录失败：'+e.message)));
 $('sync-origin').addEventListener('change', () => { state.source=null;render();toast('来源类型已切换，请重新选择要导入的文件夹'); });
 $('sync-pick').addEventListener('click', () => chooseSource());
