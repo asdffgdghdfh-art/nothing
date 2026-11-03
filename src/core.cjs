@@ -272,6 +272,8 @@ async function gallery(drive) {
 async function verifyArchive(drive,{onProgress=()=>{},shouldCancel=()=>false}={}) {
   drive=path.resolve(drive);
   if(!(await fsp.stat(drive)).isDirectory())throw Error('硬盘目录无效');
+  // Compare canonical paths because macOS commonly resolves /var to /private/var.
+  const driveReal=await fsp.realpath(drive);
   // Audit the persisted inventory, including prior missing files; never mutate it.
   const index=await readIndex(drive);
   const records=[...(index.items||[]),...(index.missing||[])];
@@ -293,7 +295,7 @@ async function verifyArchive(drive,{onProgress=()=>{},shouldCancel=()=>false}={}
       const stat=await fsp.lstat(target);
       if(!stat.isFile())throw Error('不是普通媒体文件');
       const real=await fsp.realpath(target);
-      if(!isWithin(drive,real))throw Error('文件指向硬盘外');
+      if(!isWithin(driveReal,real))throw Error('文件指向硬盘外');
       const digest=await hashFile(real);
       if(digest!==item.sha256){result.corrupt++;report(rel,'SHA-256 不一致，请检查是否被修改');}
       else result.ok++;
